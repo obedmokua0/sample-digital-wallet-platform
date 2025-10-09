@@ -1,0 +1,350 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Wallet Service Event Schemas",
+  "description": "JSON schemas for events published by the Wallet Microservice to Redis Streams",
+  "definitions": {
+    "walletCreated": {
+      "type": "object",
+      "title": "Wallet Created Event",
+      "description": "Published when a new wallet is created",
+      "required": ["eventType", "walletId", "userId", "currency", "timestamp", "correlationId"],
+      "properties": {
+        "eventType": {
+          "type": "string",
+          "const": "wallet.created"
+        },
+        "walletId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier of the created wallet"
+        },
+        "userId": {
+          "type": "string",
+          "description": "ID of the user who owns the wallet"
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["USD", "EUR", "GBP"],
+          "description": "ISO 4217 currency code"
+        },
+        "initialBalance": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d{2,4}$",
+          "description": "Initial balance (typically 0.00)"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when event occurred"
+        },
+        "correlationId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Request correlation ID for tracing"
+        }
+      },
+      "example": {
+        "eventType": "wallet.created",
+        "walletId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "userId": "user-123",
+        "currency": "USD",
+        "initialBalance": "0.00",
+        "timestamp": "2025-10-09T10:00:00Z",
+        "correlationId": "req-abc-123"
+      }
+    },
+    "fundsDeposited": {
+      "type": "object",
+      "title": "Funds Deposited Event",
+      "description": "Published when funds are deposited into a wallet",
+      "required": ["eventType", "walletId", "transactionId", "amount", "currency", "newBalance", "timestamp", "correlationId"],
+      "properties": {
+        "eventType": {
+          "type": "string",
+          "const": "funds.deposited"
+        },
+        "walletId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Wallet that received the deposit"
+        },
+        "transactionId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique transaction identifier"
+        },
+        "amount": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d{2,4}$",
+          "description": "Amount deposited"
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["USD", "EUR", "GBP"],
+          "description": "Currency of the deposit"
+        },
+        "previousBalance": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d{2,4}$",
+          "description": "Balance before deposit"
+        },
+        "newBalance": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d{2,4}$",
+          "description": "Balance after deposit"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when event occurred"
+        },
+        "correlationId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Request correlation ID for tracing"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Optional transaction metadata"
+        }
+      },
+      "example": {
+        "eventType": "funds.deposited",
+        "walletId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "transactionId": "txn-001",
+        "amount": "100.00",
+        "currency": "USD",
+        "previousBalance": "1400.50",
+        "newBalance": "1500.50",
+        "timestamp": "2025-10-09T14:30:00Z",
+        "correlationId": "req-xyz-789"
+      }
+    },
+    "fundsWithdrawn": {
+      "type": "object",
+      "title": "Funds Withdrawn Event",
+      "description": "Published when funds are withdrawn from a wallet",
+      "required": ["eventType", "walletId", "transactionId", "amount", "currency", "newBalance", "timestamp", "correlationId"],
+      "properties": {
+        "eventType": {
+          "type": "string",
+          "const": "funds.withdrawn"
+        },
+        "walletId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Wallet from which funds were withdrawn"
+        },
+        "transactionId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique transaction identifier"
+        },
+        "amount": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d{2,4}$",
+          "description": "Amount withdrawn"
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["USD", "EUR", "GBP"],
+          "description": "Currency of the withdrawal"
+        },
+        "previousBalance": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d{2,4}$",
+          "description": "Balance before withdrawal"
+        },
+        "newBalance": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d{2,4}$",
+          "description": "Balance after withdrawal"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when event occurred"
+        },
+        "correlationId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Request correlation ID for tracing"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Optional transaction metadata"
+        }
+      },
+      "example": {
+        "eventType": "funds.withdrawn",
+        "walletId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "transactionId": "txn-002",
+        "amount": "50.00",
+        "currency": "USD",
+        "previousBalance": "1500.50",
+        "newBalance": "1450.50",
+        "timestamp": "2025-10-09T15:00:00Z",
+        "correlationId": "req-def-456"
+      }
+    },
+    "fundsTransferDebited": {
+      "type": "object",
+      "title": "Funds Transfer Debited Event",
+      "description": "Published when funds are debited from source wallet in a transfer",
+      "required": ["eventType", "sourceWalletId", "destinationWalletId", "transferId", "transactionId", "amount", "currency", "newBalance", "timestamp", "correlationId"],
+      "properties": {
+        "eventType": {
+          "type": "string",
+          "const": "funds.transfer.debited"
+        },
+        "sourceWalletId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Wallet from which funds were transferred"
+        },
+        "destinationWalletId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Wallet to which funds were transferred"
+        },
+        "transferId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique transfer identifier linking debit and credit"
+        },
+        "transactionId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Transaction ID for the debit operation"
+        },
+        "amount": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d{2,4}$",
+          "description": "Amount transferred"
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["USD", "EUR", "GBP"],
+          "description": "Currency of the transfer"
+        },
+        "previousBalance": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d{2,4}$",
+          "description": "Source wallet balance before transfer"
+        },
+        "newBalance": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d{2,4}$",
+          "description": "Source wallet balance after transfer"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when event occurred"
+        },
+        "correlationId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Request correlation ID for tracing"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Optional transaction metadata"
+        }
+      },
+      "example": {
+        "eventType": "funds.transfer.debited",
+        "sourceWalletId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "destinationWalletId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+        "transferId": "transfer-123",
+        "transactionId": "txn-003",
+        "amount": "75.00",
+        "currency": "USD",
+        "previousBalance": "1450.50",
+        "newBalance": "1375.50",
+        "timestamp": "2025-10-09T16:00:00Z",
+        "correlationId": "req-ghi-789"
+      }
+    },
+    "fundsTransferCredited": {
+      "type": "object",
+      "title": "Funds Transfer Credited Event",
+      "description": "Published when funds are credited to destination wallet in a transfer",
+      "required": ["eventType", "sourceWalletId", "destinationWalletId", "transferId", "transactionId", "amount", "currency", "newBalance", "timestamp", "correlationId"],
+      "properties": {
+        "eventType": {
+          "type": "string",
+          "const": "funds.transfer.credited"
+        },
+        "sourceWalletId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Wallet from which funds were transferred"
+        },
+        "destinationWalletId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Wallet to which funds were transferred"
+        },
+        "transferId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique transfer identifier linking debit and credit"
+        },
+        "transactionId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Transaction ID for the credit operation"
+        },
+        "amount": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d{2,4}$",
+          "description": "Amount transferred"
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["USD", "EUR", "GBP"],
+          "description": "Currency of the transfer"
+        },
+        "previousBalance": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d{2,4}$",
+          "description": "Destination wallet balance before transfer"
+        },
+        "newBalance": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d{2,4}$",
+          "description": "Destination wallet balance after transfer"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when event occurred"
+        },
+        "correlationId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Request correlation ID for tracing"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Optional transaction metadata"
+        }
+      },
+      "example": {
+        "eventType": "funds.transfer.credited",
+        "sourceWalletId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "destinationWalletId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+        "transferId": "transfer-123",
+        "transactionId": "txn-004",
+        "amount": "75.00",
+        "currency": "USD",
+        "previousBalance": "500.00",
+        "newBalance": "575.00",
+        "timestamp": "2025-10-09T16:00:00Z",
+        "correlationId": "req-ghi-789"
+      }
+    }
+  }
+}
+

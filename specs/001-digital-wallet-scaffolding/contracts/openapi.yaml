@@ -1,0 +1,694 @@
+openapi: 3.0.3
+info:
+  title: Wallet Microservice API
+  version: 1.0.0
+  description: |
+    REST API for managing digital wallets, enabling deposits, withdrawals, transfers, and transaction history.
+    
+    **Features:**
+    - Create and manage wallets with balance tracking
+    - Deposit and withdraw funds with validation
+    - Transfer funds between wallets atomically
+    - Query transaction history with pagination
+    - Event-driven architecture with published events
+    - Idempotency support for safe retries
+    
+    **Authentication:** Bearer JWT tokens required for all operations except health checks.
+    
+  contact:
+    name: Wallet Service Team
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development
+  - url: https://api.example.com/api/v1
+    description: Production
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: wallets
+    description: Wallet management operations
+  - name: transactions
+    description: Transaction operations and history
+  - name: health
+    description: Health check and monitoring endpoints
+
+paths:
+  /wallets:
+    post:
+      tags: [wallets]
+      summary: Create a new wallet
+      description: Creates a new wallet for the authenticated user in the specified currency
+      operationId: createWallet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currency]
+              properties:
+                currency:
+                  type: string
+                  enum: [USD, EUR, GBP]
+                  description: ISO 4217 currency code
+                  example: USD
+            examples:
+              usd_wallet:
+                summary: Create USD wallet
+                value:
+                  currency: USD
+      responses:
+        '201':
+          description: Wallet created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Wallet already exists for this currency
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /wallets/{walletId}:
+    get:
+      tags: [wallets]
+      summary: Get wallet details
+      description: Retrieves full details of a wallet including current balance
+      operationId: getWallet
+      parameters:
+        - $ref: '#/components/parameters/walletId'
+      responses:
+        '200':
+          description: Wallet details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /wallets/{walletId}/balance:
+    get:
+      tags: [wallets]
+      summary: Get wallet balance
+      description: Retrieves the current balance of a wallet
+      operationId: getBalance
+      parameters:
+        - $ref: '#/components/parameters/walletId'
+      responses:
+        '200':
+          description: Current balance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  walletId:
+                    type: string
+                    format: uuid
+                  balance:
+                    type: string
+                    pattern: '^\d+\.\d{2,4}$'
+                    example: "1500.50"
+                  currency:
+                    type: string
+                    enum: [USD, EUR, GBP]
+                    example: USD
+                  asOf:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /wallets/{walletId}/deposit:
+    post:
+      tags: [transactions]
+      summary: Deposit funds
+      description: Adds funds to the wallet
+      operationId: deposit
+      parameters:
+        - $ref: '#/components/parameters/walletId'
+        - $ref: '#/components/parameters/idempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepositRequest'
+      responses:
+        '200':
+          description: Deposit successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Business rule violation (e.g., amount exceeds limit)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /wallets/{walletId}/withdraw:
+    post:
+      tags: [transactions]
+      summary: Withdraw funds
+      description: Removes funds from the wallet
+      operationId: withdraw
+      parameters:
+        - $ref: '#/components/parameters/walletId'
+        - $ref: '#/components/parameters/idempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawRequest'
+      responses:
+        '200':
+          description: Withdrawal successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Business rule violation (e.g., insufficient funds)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                insufficient_funds:
+                  value:
+                    error: INSUFFICIENT_FUNDS
+                    message: Wallet balance insufficient for withdrawal
+                    details:
+                      requested: "100.00"
+                      available: "50.00"
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /wallets/{walletId}/transfer:
+    post:
+      tags: [transactions]
+      summary: Transfer funds to another wallet
+      description: Transfers funds from this wallet to another wallet atomically
+      operationId: transfer
+      parameters:
+        - $ref: '#/components/parameters/walletId'
+        - $ref: '#/components/parameters/idempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
+      responses:
+        '200':
+          description: Transfer successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Source or destination wallet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Business rule violation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                insufficient_funds:
+                  value:
+                    error: INSUFFICIENT_FUNDS
+                    message: Insufficient funds for transfer
+                currency_mismatch:
+                  value:
+                    error: CURRENCY_MISMATCH
+                    message: Source and destination wallets must have same currency
+                same_wallet:
+                  value:
+                    error: INVALID_TRANSFER
+                    message: Cannot transfer to the same wallet
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /wallets/{walletId}/transactions:
+    get:
+      tags: [transactions]
+      summary: Get transaction history
+      description: Retrieves paginated transaction history for the wallet with optional filtering
+      operationId: getTransactions
+      parameters:
+        - $ref: '#/components/parameters/walletId'
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          description: Number of transactions per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: type
+          in: query
+          description: Filter by transaction type
+          schema:
+            type: string
+            enum: [deposit, withdrawal, transfer_debit, transfer_credit]
+        - name: startDate
+          in: query
+          description: Filter transactions after this date (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          description: Filter transactions before this date (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Transaction history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /health:
+    get:
+      tags: [health]
+      summary: Health check (liveness probe)
+      description: Returns service health status. Used for liveness probes.
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /health/ready:
+    get:
+      tags: [health]
+      summary: Readiness check
+      description: Checks if service and all dependencies are ready. Used for readiness probes.
+      operationId: readinessCheck
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ready]
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        enum: [ok]
+                      redis:
+                        type: string
+                        enum: [ok]
+        '503':
+          description: Service is not ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [not_ready]
+                  checks:
+                    type: object
+                    additionalProperties:
+                      type: string
+
+  /metrics:
+    get:
+      tags: [health]
+      summary: Prometheus metrics
+      description: Returns Prometheus-compatible metrics
+      operationId: getMetrics
+      security: []
+      responses:
+        '200':
+          description: Metrics in Prometheus format
+          content:
+            text/plain:
+              schema:
+                type: string
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from authentication service
+
+  parameters:
+    walletId:
+      name: walletId
+      in: path
+      required: true
+      description: UUID of the wallet
+      schema:
+        type: string
+        format: uuid
+    
+    idempotencyKey:
+      name: Idempotency-Key
+      in: header
+      description: Unique key for idempotent operations (UUID recommended)
+      schema:
+        type: string
+        format: uuid
+      example: "550e8400-e29b-41d4-a716-446655440000"
+
+  schemas:
+    Wallet:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique wallet identifier
+        userId:
+          type: string
+          description: ID of the user who owns the wallet
+        balance:
+          type: string
+          pattern: '^\d+\.\d{2,4}$'
+          description: Current balance as decimal string
+          example: "1500.50"
+        currency:
+          type: string
+          enum: [USD, EUR, GBP]
+          description: ISO 4217 currency code
+        status:
+          type: string
+          enum: [active, frozen, closed]
+          description: Wallet status
+        createdAt:
+          type: string
+          format: date-time
+          description: Wallet creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    DepositRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: string
+          pattern: '^\d+\.\d{2,4}$'
+          description: Amount to deposit as decimal string
+          example: "100.50"
+        metadata:
+          type: object
+          description: Optional metadata for the transaction
+          additionalProperties: true
+
+    WithdrawRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: string
+          pattern: '^\d+\.\d{2,4}$'
+          description: Amount to withdraw as decimal string
+          example: "50.00"
+        metadata:
+          type: object
+          description: Optional metadata for the transaction
+          additionalProperties: true
+
+    TransferRequest:
+      type: object
+      required: [destinationWalletId, amount]
+      properties:
+        destinationWalletId:
+          type: string
+          format: uuid
+          description: UUID of the destination wallet
+        amount:
+          type: string
+          pattern: '^\d+\.\d{2,4}$'
+          description: Amount to transfer as decimal string
+          example: "75.25"
+        metadata:
+          type: object
+          description: Optional metadata for the transaction
+          additionalProperties: true
+
+    TransactionResponse:
+      type: object
+      properties:
+        transactionId:
+          type: string
+          format: uuid
+          description: Unique transaction identifier
+        walletId:
+          type: string
+          format: uuid
+          description: Wallet affected by transaction
+        type:
+          type: string
+          enum: [deposit, withdrawal, transfer_debit, transfer_credit]
+          description: Type of transaction
+        amount:
+          type: string
+          pattern: '^\d+\.\d{2,4}$'
+          description: Transaction amount
+        currency:
+          type: string
+          enum: [USD, EUR, GBP]
+        balanceBefore:
+          type: string
+          pattern: '^\d+\.\d{2,4}$'
+          description: Balance before transaction
+        balanceAfter:
+          type: string
+          pattern: '^\d+\.\d{2,4}$'
+          description: Balance after transaction
+        status:
+          type: string
+          enum: [completed, failed]
+        createdAt:
+          type: string
+          format: date-time
+          description: Transaction timestamp
+
+    TransferResponse:
+      type: object
+      properties:
+        sourceTransaction:
+          $ref: '#/components/schemas/TransactionResponse'
+        destinationTransaction:
+          $ref: '#/components/schemas/TransactionResponse'
+        transferId:
+          type: string
+          format: uuid
+          description: Correlation ID linking both transactions
+
+    TransactionList:
+      type: object
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionResponse'
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+              description: Current page number
+            pageSize:
+              type: integer
+              description: Number of items per page
+            totalItems:
+              type: integer
+              description: Total number of transactions
+            totalPages:
+              type: integer
+              description: Total number of pages
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error code
+          example: INSUFFICIENT_FUNDS
+        message:
+          type: string
+          description: Human-readable error message
+          example: Wallet balance insufficient for withdrawal
+        details:
+          type: object
+          description: Additional error details
+          additionalProperties: true
+        correlationId:
+          type: string
+          format: uuid
+          description: Request correlation ID for debugging
+
+  responses:
+    BadRequest:
+      description: Invalid request (validation failure)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            validation_error:
+              value:
+                error: VALIDATION_ERROR
+                message: Invalid request parameters
+                details:
+                  amount: "must be a positive number"
+
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: UNAUTHORIZED
+            message: Authentication required
+
+    Forbidden:
+      description: Authenticated but not authorized to access this resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: FORBIDDEN
+            message: You do not have permission to access this wallet
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: NOT_FOUND
+            message: Wallet not found
+
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per minute
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests in current window
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when limit resets
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: RATE_LIMIT_EXCEEDED
+            message: Too many requests, please try again later
+

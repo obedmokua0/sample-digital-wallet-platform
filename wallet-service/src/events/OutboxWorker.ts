@@ -4,7 +4,7 @@
  */
 
 import { OutboxRepository } from '../db/repositories/OutboxRepository';
-import { getRedisClient, publishToStream } from './publisher';
+import { publishToStream } from './publisher';
 import { getConfig } from '../config';
 import * as logger from '../utils/logger';
 

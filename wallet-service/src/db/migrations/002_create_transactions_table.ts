@@ -3,7 +3,7 @@
  * Creates the transactions table with all required columns, indexes, constraints, and foreign keys
  */
 
-import { MigrationInterface, QueryRunner, Table, Index, TableForeignKey } from 'typeorm';
+import { MigrationInterface, QueryRunner, Table, TableIndex, TableForeignKey } from 'typeorm';
 
 export class CreateTransactionsTable1696867300000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -118,7 +118,7 @@ export class CreateTransactionsTable1696867300000 implements MigrationInterface 
     // Create indexes
     await queryRunner.createIndex(
       'transactions',
-      new Index({
+      new TableIndex({
         name: 'idx_transactions_wallet_id',
         columnNames: ['wallet_id'],
       }),
@@ -126,7 +126,7 @@ export class CreateTransactionsTable1696867300000 implements MigrationInterface 
 
     await queryRunner.createIndex(
       'transactions',
-      new Index({
+      new TableIndex({
         name: 'idx_transactions_idempotency_key',
         columnNames: ['idempotency_key'],
         isUnique: true,
@@ -136,7 +136,7 @@ export class CreateTransactionsTable1696867300000 implements MigrationInterface 
 
     await queryRunner.createIndex(
       'transactions',
-      new Index({
+      new TableIndex({
         name: 'idx_transactions_created_at',
         columnNames: ['created_at'],
       }),
@@ -144,7 +144,7 @@ export class CreateTransactionsTable1696867300000 implements MigrationInterface 
 
     await queryRunner.createIndex(
       'transactions',
-      new Index({
+      new TableIndex({
         name: 'idx_transactions_wallet_created',
         columnNames: ['wallet_id', 'created_at'],
       }),

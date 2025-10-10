@@ -115,6 +115,10 @@ export async function publishToStream(
   // Add event to stream using XADD
   const eventId = await client.xadd(streamName, '*', ...streamFields);
   
+  if (!eventId) {
+    throw new Error('Failed to publish event to Redis Stream');
+  }
+  
   return eventId;
 }
 

@@ -3,7 +3,7 @@
  * Creates the wallets table with all required columns, indexes, and constraints
  */
 
-import { MigrationInterface, QueryRunner, Table, Index } from 'typeorm';
+import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
 
 export class CreateWalletsTable1696867200000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -90,7 +90,7 @@ export class CreateWalletsTable1696867200000 implements MigrationInterface {
     // Create indexes
     await queryRunner.createIndex(
       'wallets',
-      new Index({
+      new TableIndex({
         name: 'idx_wallets_user_id',
         columnNames: ['user_id'],
       }),
@@ -98,7 +98,7 @@ export class CreateWalletsTable1696867200000 implements MigrationInterface {
 
     await queryRunner.createIndex(
       'wallets',
-      new Index({
+      new TableIndex({
         name: 'idx_wallets_status',
         columnNames: ['status'],
       }),
@@ -106,7 +106,7 @@ export class CreateWalletsTable1696867200000 implements MigrationInterface {
 
     await queryRunner.createIndex(
       'wallets',
-      new Index({
+      new TableIndex({
         name: 'idx_wallets_user_id_currency',
         columnNames: ['user_id', 'currency'],
         isUnique: true,

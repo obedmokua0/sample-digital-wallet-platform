@@ -33,9 +33,30 @@ interface JWTPayload {
 /**
  * Authentication middleware
  * Verifies JWT Bearer token and attaches userId to request
+ * 
+ * TEST MODE: In development/test environment, you can use X-Test-User-Id header
+ * to bypass JWT authentication for easier testing
  */
 export function authMiddleware(req: Request, _res: Response, next: NextFunction): void {
   try {
+    // TEST MODE: Allow bypassing JWT in development/test with X-Test-User-Id header
+    // WARNING: This should NEVER be enabled in production!
+    const config = getConfig();
+    const isTestMode = config.server.nodeEnv === 'development' || config.server.nodeEnv === 'test';
+    const testUserId = req.headers['x-test-user-id'] as string;
+    
+    if (isTestMode && testUserId) {
+      req.userId = testUserId;
+      logger.debug('Authentication bypassed (test mode)', {
+        correlationId: req.correlationId,
+        userId: req.userId,
+        testMode: true,
+      });
+      next();
+      return;
+    }
+
+    // PRODUCTION MODE: Verify JWT token
     // Extract token from Authorization header
     const authHeader = req.headers.authorization;
 
@@ -52,7 +73,6 @@ export function authMiddleware(req: Request, _res: Response, next: NextFunction)
     const token = parts[1];
 
     // Verify JWT signature
-    const config = getConfig();
     const payload = jwt.verify(token, config.jwt.publicKey, {
       algorithms: ['RS256'],
     }) as JWTPayload;

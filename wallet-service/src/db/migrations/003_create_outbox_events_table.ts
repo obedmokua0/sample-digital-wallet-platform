@@ -3,7 +3,7 @@
  * Creates the outbox_events table for transactional outbox pattern
  */
 
-import { MigrationInterface, QueryRunner, Table, Index } from 'typeorm';
+import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
 
 export class CreateOutboxEventsTable1696867400000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -57,7 +57,7 @@ export class CreateOutboxEventsTable1696867400000 implements MigrationInterface 
     // Create indexes
     await queryRunner.createIndex(
       'outbox_events',
-      new Index({
+      new TableIndex({
         name: 'idx_outbox_unpublished',
         columnNames: ['published', 'created_at'],
         where: 'published = false',
@@ -66,7 +66,7 @@ export class CreateOutboxEventsTable1696867400000 implements MigrationInterface 
 
     await queryRunner.createIndex(
       'outbox_events',
-      new Index({
+      new TableIndex({
         name: 'idx_outbox_aggregate',
         columnNames: ['aggregate_id'],
       }),

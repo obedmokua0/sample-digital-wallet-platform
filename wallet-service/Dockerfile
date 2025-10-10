@@ -37,6 +37,10 @@ RUN npm ci --only=production && \
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Change ownership to non-root user
 RUN chown -R nodejs:nodejs /app
 
@@ -44,12 +48,12 @@ USER nodejs
 
 EXPOSE 3000
 
-# Use dumb-init for proper signal handling (graceful shutdown)
-ENTRYPOINT ["dumb-init", "--"]
-
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/api/v1/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Use dumb-init for proper signal handling with custom entrypoint
+ENTRYPOINT ["dumb-init", "--", "docker-entrypoint.sh"]
 
 CMD ["node", "dist/index.js"]
 

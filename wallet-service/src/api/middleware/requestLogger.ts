@@ -27,10 +27,10 @@ export function requestLoggerMiddleware(
   });
 
   // Capture original end function
-  const originalEnd = res.end;
+  const originalEnd = res.end.bind(res);
 
   // Override end to log response
-  res.end = function (chunk?: unknown, encoding?: unknown, callback?: unknown): Response {
+  res.end = ((...args: any[]): any => {
     const duration = Date.now() - startTime;
     
     logger.info('Outgoing response', {
@@ -41,15 +41,9 @@ export function requestLoggerMiddleware(
       duration,
     });
 
-    // Call original end
-    if (typeof chunk === 'function') {
-      return originalEnd.call(this, chunk as () => void);
-    } else if (typeof encoding === 'function') {
-      return originalEnd.call(this, chunk, encoding as () => void);
-    } else {
-      return originalEnd.call(this, chunk, encoding as BufferEncoding, callback as (() => void) | undefined);
-    }
-  };
+    // Call original end with all arguments
+    return originalEnd(...args);
+  }) as any;
 
   next();
 }

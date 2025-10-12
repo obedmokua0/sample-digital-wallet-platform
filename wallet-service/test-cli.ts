@@ -691,7 +691,7 @@ async function testCreditWallet(walletId: string, amount?: number): Promise<void
     const authUserId = ctx.walletUserMap.get(walletId) || 'test-user';
     const { response, success } = await apiCall(
       'POST',
-      `/api/v1/wallets/${walletId}/credit`,
+      `/api/v1/wallets/${walletId}/deposit`,
       {
         amount: creditAmount,
         description: 'Test credit',
@@ -703,7 +703,7 @@ async function testCreditWallet(walletId: string, amount?: number): Promise<void
     showResponse(response, success);
 
     if (success) {
-      printResult('New Balance', `$${response.data?.balance}`, true);
+      printResult('New Balance', `$${response.data?.balanceAfter}`, true);
       printResult('Transaction ID', response.data?.transactionId);
       if (response.data?.transactionId) {
         ctx.transactionIds.push(response.data.transactionId);
@@ -726,7 +726,7 @@ async function testDebitWallet(walletId: string, amount?: number): Promise<void>
     const authUserId = ctx.walletUserMap.get(walletId) || 'test-user';
     const { response, success } = await apiCall(
       'POST',
-      `/api/v1/wallets/${walletId}/debit`,
+      `/api/v1/wallets/${walletId}/withdraw`,
       {
         amount: debitAmount,
         description: 'Test debit',
@@ -738,7 +738,7 @@ async function testDebitWallet(walletId: string, amount?: number): Promise<void>
     showResponse(response, success);
 
     if (success) {
-      printResult('New Balance', `$${response.data?.balance}`, true);
+      printResult('New Balance', `$${response.data?.balanceAfter}`, true);
       printResult('Transaction ID', response.data?.transactionId);
       if (response.data?.transactionId) {
         ctx.transactionIds.push(response.data.transactionId);
@@ -763,7 +763,7 @@ async function testTransferWallet(fromWalletId: string, toWalletId: string, amou
       'POST',
       `/api/v1/wallets/${fromWalletId}/transfer`,
       {
-        toWalletId,
+        destinationWalletId: toWalletId,
         amount: transferAmount,
         description: 'Test transfer',
         idempotencyKey: `transfer-${Date.now()}`,
@@ -774,11 +774,11 @@ async function testTransferWallet(fromWalletId: string, toWalletId: string, amou
     showResponse(response, success);
 
     if (success) {
-      printResult('Source Balance', `$${response.data?.sourceBalance}`, true);
-      printResult('Destination Balance', `$${response.data?.destinationBalance}`, true);
-      printResult('Transaction ID', response.data?.transactionId);
-      if (response.data?.transactionId) {
-        ctx.transactionIds.push(response.data.transactionId);
+      printResult('Source Balance', `$${response.data?.sourceTransaction?.balanceAfter}`, true);
+      printResult('Destination Balance', `$${response.data?.destinationTransaction?.balanceAfter}`, true);
+      printResult('Transfer ID', response.data?.transferId);
+      if (response.data?.transferId) {
+        ctx.transactionIds.push(response.data.transferId);
       }
       ctx.results.push({ test: 'transfer_wallet', status: 'success' });
     } else {
@@ -809,7 +809,7 @@ async function testGetTransactions(walletId: string): Promise<void> {
 
         transactions.slice(0, 10).forEach((tx: any) => {
           table.push([
-            tx.id.substring(0, 8),
+            tx.transactionId.substring(0, 8),
             tx.type,
             `$${tx.amount}`,
             `$${tx.balanceAfter}`,

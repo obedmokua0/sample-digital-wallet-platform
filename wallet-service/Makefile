@@ -165,6 +165,9 @@ setup: ## Initial setup (install + build + start)
 	@$(MAKE) build
 	@$(MAKE) docker-build
 	@$(MAKE) start
+	@sleep 10
+	@echo "$(BLUE)📊 Verifying migrations...$(NC)"
+	@$(MAKE) migrate-up || echo "$(YELLOW)⚠️  Migrations may have already run$(NC)"
 	@echo "$(GREEN)✅ Setup complete! Wallet service is ready.$(NC)"
 
 quick-test: ## Quick test (assumes containers are running)

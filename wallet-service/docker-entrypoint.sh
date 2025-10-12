@@ -40,7 +40,7 @@ wait_for "redis" "6379" "Redis"
 
 # Run database migrations
 echo "📊 Running database migrations..."
-npm run migrate:up || {
+node dist/db/migrations/runner.js up || {
   echo "⚠️  Migrations failed or already up to date"
 }
 echo "✅ Migrations completed!"

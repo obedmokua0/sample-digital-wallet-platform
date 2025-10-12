@@ -28,7 +28,7 @@ const POSTGRES_CONFIG = {
 };
 
 const DOCKER_COMPOSE_FILE = 'docker-compose.yml';
-const DOCKER_PROJECT_NAME = 'wallet-service';
+const DOCKER_PROJECT_NAME = 'sample-digital-wallet-platform';
 const LOG_FILE = 'logs.txt';
 
 // Required ports for the application
